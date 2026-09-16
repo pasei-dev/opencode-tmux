@@ -1,6 +1,6 @@
 # opencode-tmux
 
-Local plugin that manages subagent sessions in tmux panes.
+OpenCode v2 plugin that manages subagent sessions in tmux panes.
 
 ## Overview
 
@@ -18,10 +18,39 @@ When OpenCode runs inside tmux, this plugin spawns each subagent as a sibling pa
 
 ## Requirements
 
+- **OpenCode v2** (`@opencode/plugin` v2 API).
 - **tmux**: Must be installed and on PATH.
-- **Bun**: Used for spawning processes (`Bun.spawnSync`, `Bun.which`).
-- **Parent session inside tmux**: `TMUX` and `TMUX_PANE` environment variables must be set.
-- **OpenCode server**: The parent session provides `OPENCODE_SERVER_URL`, `OPENCODE_SERVER_USERNAME`, and `OPENCODE_SERVER_PASSWORD` environment variables when needed.
+- **Parent session inside tmux**: the `TMUX` environment variable must be set (i.e. the OpenCode server was started from inside tmux).
+
+Each pane runs `opencode --session <id> <dir>` against the shared background service, so no server URL is needed. If `OPENCODE_SERVER_URL` is set it is forwarded via `--server`; otherwise service discovery handles it. `OPENCODE_BIN` may point at a specific binary.
+
+## Install
+
+```sh
+opencode plugin add github:Nejrup/opencode-tmux
+```
+
+```jsonc title="opencode.jsonc"
+{
+  "plugins": ["github:Nejrup/opencode-tmux"],
+}
+```
+
+```sh
+opencode service restart
+```
+
+Check it took:
+
+```sh
+opencode plugin list
+# ID     VERSION  SOURCE
+# tmux   <sha>    github:Nejrup/opencode-tmux
+```
+
+> **Pin a version:** append a ref — `github:Nejrup/opencode-tmux#v2.0.0`.
+> An unpinned spec tracks the default branch and `opencode plugin update` moves it;
+> exact versions and full commit hashes stay put and are skipped by update checks.
 
 ## Local verification
 
@@ -33,13 +62,13 @@ npm run check:env
 npm run typecheck
 ```
 
-`check:env` validates the expected local environment. `typecheck` is the intended static check for the plugin code.
+`check:env` validates the expected local environment. `typecheck` is the static check for the plugin code.
 
 ## Manual smoke test
 
 Verify the full pane spawn and cleanup flow in a live tmux session:
 
-1. Ensure your `opencode.jsonc` points at this plugin entry point (for example `./plugins/opencode-tmux/src/index.ts` in a profile-local setup).
+1. Register this checkout (`./install.sh`) or install from GitHub (see above).
 2. Start OpenCode from inside tmux.
 3. Trigger a `task` tool call that creates a child session.
 4. Confirm a sibling pane appears for the child session.
@@ -48,3 +77,14 @@ Verify the full pane spawn and cleanup flow in a live tmux session:
 ## Entry point
 
 - Source: [`src/index.ts`](src/index.ts)
+- Plugin ID: `tmux` (server-only, no TUI half)
+
+## Development
+
+Local development install (registers this checkout via `git+file://`, like `opencode-profile-switcher`'s dev loop):
+
+```sh
+./install.sh
+```
+
+After editing `src/`: commit, then `opencode plugin update` (or remove + add) and `opencode service restart`.

@@ -1,17 +1,30 @@
 {
   "name": "opencode-tmux",
-  "private": true,
+  "version": "2.0.0",
+  "description": "Run OpenCode subagents in sibling tmux panes",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": ["src"],
   "scripts": {
-    "check:env": "command -v bun >/dev/null && command -v tmux >/dev/null",
+    "check:env": "command -v tmux >/dev/null && command -v opencode >/dev/null",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "keywords": ["opencode", "opencode-plugin", "tmux", "subagent"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nejrup/opencode-tmux.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nejrup/opencode-tmux/issues"
+  },
+  "homepage": "https://github.com/Nejrup/opencode-tmux#readme",
   "dependencies": {
-    "@opencode-ai/plugin": "^1.3.0"
+    "@opencode/plugin": "^2.0.3"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
-    "bun-types": "^1.3.6",
     "typescript": "^6.0.2"
   }
 }
