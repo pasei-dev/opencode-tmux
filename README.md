@@ -1,90 +1,109 @@
+<div align="center">
+
 # opencode-tmux
 
-OpenCode v2 plugin that manages subagent sessions in tmux panes.
+**Every subagent gets its own tmux pane, next to yours.**
 
-## Overview
+![OpenCode 2.3+](https://img.shields.io/badge/OpenCode-2.3%2B-black)
+![license: MIT](https://img.shields.io/badge/license-MIT-black)
 
-When OpenCode runs inside tmux, this plugin spawns each subagent as a sibling pane attached to the same OpenCode server. Child sessions open in new tmux panes while resumed sessions reuse existing tracked panes. Panes clean up automatically when sessions end.
+</div>
 
-## Behaviors
-
-- **Task queuing**: Intercepts `task` tool calls from parent sessions inside tmux and queues them for child spawning.
-- **Sibling pane spawning**: Opens each child session in a new tmux pane split from the existing pane layout.
-- **Resumed session reuse**: Finds and reuses tracked panes for sessions that resume (identified by `task_id` matching the session ID).
-- **Pane ordering**: First delegated pane opens as a horizontal split. Subsequent panes append as vertical splits below the existing stack, so the oldest pane stays at the top and newer panes appear below.
-- **Explicit cleanup**: Closes panes immediately on `session.deleted` events.
-- **Deferred cleanup**: Schedules pane closure after `session.idle` with a short delay (4s) and a fresh-pane guard (5s) to prevent flicker when sessions open and close rapidly.
-- **Process shutdown**: Immediate pane cleanup attempts a graceful process termination before closing the tmux pane. Deferred idle cleanup closes the pane directly.
-
-## Requirements
-
-- **OpenCode v2** (`@opencode/plugin` v2 API).
-- **tmux**: Must be installed and on PATH.
-- **Parent session inside tmux**: the `TMUX` environment variable must be set (i.e. the OpenCode server was started from inside tmux).
-
-Each pane runs `opencode --session <id> <dir>` against the shared background service, so no server URL is needed. If `OPENCODE_SERVER_URL` is set it is forwarded via `--server`; otherwise service discovery handles it. `OPENCODE_BIN` may point at a specific binary.
+OpenCode runs subagents headless, so their work stays invisible until a task
+returns. This plugin opens each child session in a sibling tmux pane attached to
+the same server. You watch the agent work in the layout you already have.
 
 ## Install
 
 ```sh
-opencode plugin add github:Nejrup/opencode-tmux
+opencode plugin add github:pasei-dev/opencode-tmux
 ```
 
-```jsonc title="opencode.jsonc"
+```jsonc
 {
-  "plugins": ["github:Nejrup/opencode-tmux"],
+  "plugins": ["github:pasei-dev/opencode-tmux"],
 }
 ```
 
+> [!NOTE]
+> Plugins are a startup key. Restart the service after adding it.
+
 ```sh
 opencode service restart
-```
-
-Check it took:
-
-```sh
 opencode plugin list
 # ID     VERSION  SOURCE
-# tmux   <sha>    github:Nejrup/opencode-tmux
+# tmux   <sha>    github:pasei-dev/opencode-tmux
 ```
 
-> **Pin a version:** append a ref — `github:Nejrup/opencode-tmux#v2.0.0`.
-> An unpinned spec tracks the default branch and `opencode plugin update` moves it;
-> exact versions and full commit hashes stay put and are skipped by update checks.
+> [!NOTE]
+> Pin a version by appending a ref: `github:pasei-dev/opencode-tmux#v2.0.0`. An
+> unpinned spec tracks the default branch and `opencode plugin update` moves it.
+> Exact versions and full commit hashes stay put and are skipped by update
+> checks.
 
-## Local verification
+## How it works
 
-Install dependencies and run the available checks:
+- **Task queuing** — intercepts `task` tool calls from parent sessions inside
+  tmux and queues them for child spawning.
+- **Sibling panes** — each child session opens in a pane split from the current
+  layout, attached to the same OpenCode server.
+- **Resumed sessions** — a session that resumes is matched by `task_id` against
+  the tracked panes and reuses its pane instead of opening a new one.
+- **Pane order** — the first delegated pane opens as a horizontal split. Later
+  panes append as vertical splits below the stack, so the oldest stays on top.
+- **Cleanup** — panes close immediately on `session.deleted`, and after
+  `session.idle` with a 4 s delay behind a 5 s fresh-pane guard, so sessions
+  that open and close quickly do not flicker.
+- **Shutdown** — immediate cleanup attempts a graceful process termination
+  before closing the pane. Deferred idle cleanup closes the pane directly.
 
-```bash
-npm install
-npm run check:env
-npm run typecheck
-```
+## Requirements
 
-`check:env` validates the expected local environment. `typecheck` is the static check for the plugin code.
+- **OpenCode 2.3+** (`@opencode/plugin` v2 API).
+- **tmux** installed and on `PATH`.
+- **`TMUX` set** — the OpenCode server must be started from inside tmux.
 
-## Manual smoke test
+Each pane runs `opencode --session <id> <dir>` against the shared background
+service, so no server URL is needed. `OPENCODE_SERVER_URL` is forwarded via
+`--server` when set; otherwise service discovery handles it. `OPENCODE_BIN`
+points at a specific binary.
 
-Verify the full pane spawn and cleanup flow in a live tmux session:
+## Limits
 
-1. Register this checkout (`./install.sh`) or install from GitHub (see above).
-2. Start OpenCode from inside tmux.
-3. Trigger a `task` tool call that creates a child session.
-4. Confirm a sibling pane appears for the child session.
-5. Confirm the pane closes on `session.deleted` or after the idle cleanup delay.
-
-## Entry point
-
-- Source: [`src/index.ts`](src/index.ts)
-- Plugin ID: `tmux` (server-only, no TUI half)
+- Outside tmux, or with `TMUX` unset, the plugin does nothing and subagents run
+  headless as usual. There is no fallback pane layout.
+- The plugin is server-only, ID `tmux`, with no TUI half. Nothing about it shows
+  up in the TUI.
+- A pane younger than the 5 s guard is not closed by idle cleanup. It stays
+  until the session is deleted.
 
 ## Development
 
-Local development install (registers this checkout via `git+file://`, like `opencode-profile-switcher`'s dev loop):
+Local install registers this checkout via `git+file://`:
 
 ```sh
 ./install.sh
 ```
 
-After editing `src/`: commit, then `opencode plugin update` (or remove + add) and `opencode service restart`.
+Verification:
+
+```sh
+npm install
+npm run check:env
+npm run typecheck
+```
+
+`check:env` confirms `tmux` and `opencode` are on `PATH`. `typecheck` is the
+static check for the plugin code in [`src/index.ts`](src/index.ts).
+
+Smoke test in a live tmux session:
+
+1. Register the checkout with `./install.sh`, or install from
+   [GitHub](https://github.com/pasei-dev/opencode-tmux).
+2. Start OpenCode from inside tmux.
+3. Trigger a `task` tool call that creates a child session.
+4. Confirm a sibling pane appears, then closes on `session.deleted` or after the
+   idle cleanup delay.
+
+After editing `src/`: commit, then run `opencode plugin update` and
+`opencode service restart`.
