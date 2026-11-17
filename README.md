@@ -43,25 +43,25 @@ opencode plugin list
 
 ## How it works
 
-- **Task queuing** — intercepts `task` tool calls from parent sessions inside
+- **Task queuing**: intercepts `task` tool calls from parent sessions inside
   tmux and queues them for child spawning.
-- **Sibling panes** — each child session opens in a pane split from the current
+- **Sibling panes**: each child session opens in a pane split from the current
   layout, attached to the same OpenCode server.
-- **Resumed sessions** — a session that resumes is matched by `task_id` against
+- **Resumed sessions**: a session that resumes is matched by `task_id` against
   the tracked panes and reuses its pane instead of opening a new one.
-- **Pane order** — the first delegated pane opens as a horizontal split. Later
+- **Pane order**: the first delegated pane opens as a horizontal split. Later
   panes append as vertical splits below the stack, so the oldest stays on top.
-- **Cleanup** — panes close immediately on `session.deleted`, and after
+- **Cleanup**: panes close immediately on `session.deleted`, and after
   `session.idle` with a 4 s delay behind a 5 s fresh-pane guard, so sessions
   that open and close quickly do not flicker.
-- **Shutdown** — immediate cleanup attempts a graceful process termination
+- **Shutdown**: immediate cleanup attempts a graceful process termination
   before closing the pane. Deferred idle cleanup closes the pane directly.
 
 ## Requirements
 
 - **OpenCode 2.3+** (`@opencode/plugin` v2 API).
 - **tmux** installed and on `PATH`.
-- **`TMUX` set** — the OpenCode server must be started from inside tmux.
+- **`TMUX` set**: the OpenCode server must be started from inside tmux.
 
 Each pane runs `opencode --session <id> <dir>` against the shared background
 service, so no server URL is needed. `OPENCODE_SERVER_URL` is forwarded via
